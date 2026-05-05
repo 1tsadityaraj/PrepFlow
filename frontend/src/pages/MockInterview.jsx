@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchQuestions } from '../store/slices/questionSlice';
 import { Timer, Play, SkipForward, CheckCircle, XCircle, Trophy, RotateCcw, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
 
 const getDifficultyColor = (diff) => {
   switch (diff?.toLowerCase()) {
@@ -22,6 +23,14 @@ function formatTime(seconds) {
 export default function MockInterview() {
   const dispatch = useDispatch();
   const { items, status } = useSelector(state => state.questions);
+
+  const [phase, setPhase] = useState('setup');
+  const [config, setConfig] = useState({ count: 5, time: 300, difficulty: 'All' });
+  const [questions, setQuestions] = useState([]);
+  const [current, setCurrent] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [results, setResults] = useState([]);
+  const timerRef = useRef(null);
 
   const [userAnswer, setUserAnswer] = useState('');
   const [isEvaluating, setIsEvaluating] = useState(false);
