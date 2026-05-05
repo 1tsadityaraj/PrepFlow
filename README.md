@@ -38,17 +38,15 @@ PrepFlow is a robust, full-stack web application designed for software engineers
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="https://placehold.co/800x450/4f46e5/ffffff?text=Kanban+Board+Dashboard" alt="Kanban Board" width="48%">
+  <img src="./assets/board.png" alt="Kanban Board" width="48%">
   &nbsp;
-  <img src="https://placehold.co/800x450/4f46e5/ffffff?text=Mock+Interview+AI" alt="Mock Interview" width="48%">
+  <img src="./assets/mock_interview.png" alt="Mock Interview" width="48%">
 </p>
 <p align="center">
-  <img src="https://placehold.co/800x450/4f46e5/ffffff?text=Analytics+Heatmap" alt="Analytics Dashboard" width="48%">
+  <img src="./assets/analytics.png" alt="Analytics Dashboard" width="48%">
   &nbsp;
-  <img src="https://placehold.co/800x450/4f46e5/ffffff?text=Spaced+Repetition+Reviews" alt="Reviews" width="48%">
+  <img src="./assets/reviews.png" alt="Reviews" width="48%">
 </p>
-
-> *Note: Replace these placeholders by saving your own screenshots to an `assets/` folder and updating the image paths.*
 
 ---
 
