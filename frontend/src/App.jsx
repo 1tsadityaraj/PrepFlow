@@ -8,6 +8,7 @@ import TopicDetail from './pages/TopicDetail';
 import Reviews from './pages/Reviews';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
+import MockInterview from './pages/MockInterview';
 
 function App() {
   const token = useSelector(state => state.auth.token);
@@ -29,6 +30,7 @@ function App() {
         <Route path="topics/:id" element={<TopicDetail />} />
         <Route path="reviews" element={<Reviews />} />
         <Route path="analytics" element={<Analytics />} />
+        <Route path="mock-interview" element={<MockInterview />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" />} />

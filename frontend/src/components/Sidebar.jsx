@@ -1,4 +1,4 @@
-import { LayoutDashboard, BookOpen, BrainCircuit, BarChart3, Settings } from 'lucide-react';
+import { LayoutDashboard, BookOpen, BrainCircuit, BarChart3, Settings, Zap } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 
@@ -7,6 +7,7 @@ const navItems = [
   { name: 'Topics', icon: BookOpen, path: '/topics' },
   { name: 'Reviews', icon: BrainCircuit, path: '/reviews' },
   { name: 'Analytics', icon: BarChart3, path: '/analytics' },
+  { name: 'Mock Interview', icon: Zap, path: '/mock-interview' },
   { name: 'Settings', icon: Settings, path: '/settings' },
 ];
 

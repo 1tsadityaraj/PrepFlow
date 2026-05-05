@@ -1,6 +1,6 @@
 # PrepFlow 🚀
 
-> An Interview Preparation Board with a Kanban-style workflow, spaced repetition, analytics, and more.
+> Built a full-stack interview preparation platform with Kanban workflow, spaced repetition system, and analytics dashboard using React, FastAPI, and MongoDB.
 
 ![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.136-009688?logo=fastapi&logoColor=white)
@@ -13,11 +13,12 @@
 
 | Feature | Description |
 |---------|-------------|
+| ⚡ **Mock Interview Mode** | Timed, randomized interview simulator with success/fail tracking and final scoring |
 | 🔐 **JWT Auth** | Secure signup/login with bcrypt password hashing |
 | 📋 **Kanban Board** | Drag-and-drop questions across *To Learn → Practicing → Mastered → Revision* |
 | 📚 **Topics** | Browse all topics with progress bars and question counts |
-| 🧠 **Spaced Repetition** | Review due questions with Again / Good / Easy — auto-schedules next review |
-| 📊 **Analytics** | Bar charts, pie charts, topic progress, difficulty breakdown |
+| 🧠 **Spaced Repetition** | SM-2 inspired algorithm (Again / Good / Easy) with automatic interval scaling |
+| 📊 **Analytics** | Daily streak, 30-day activity heatmap, topic progress, weak topic detection |
 | ⚙️ **Settings** | Profile editing, password change, dark mode toggle |
 | 🗃️ **In-Memory DB** | Runs out-of-the-box with mock database — no MongoDB install needed |
 
@@ -191,6 +192,7 @@ Open **http://localhost:5173** in your browser and use the demo credentials:
 | Topic Detail | `/topics/:id` | Questions filtered by topic |
 | Reviews | `/reviews` | Spaced repetition review session |
 | Analytics | `/analytics` | Charts and performance stats |
+| Mock Interview | `/mock-interview` | Timed interview simulator |
 | Settings | `/settings` | Profile, password, appearance |
 | Login | `/login` | Authentication screen |
 

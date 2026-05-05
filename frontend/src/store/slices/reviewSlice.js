@@ -11,31 +11,11 @@ export const fetchDueReviews = createAsyncThunk('reviews/fetchDue', async (_, { 
   return response.data;
 });
 
-export const updateReview = createAsyncThunk(
-  'reviews/update',
-  async ({ id, performance }, { getState }) => {
-    // performance can be 'again', 'good', 'easy'
-    // Calculate new dates based on performance
-    const now = new Date();
-    let nextReviewDate = new Date();
-    let status = 'Revision';
-    
-    if (performance === 'again') {
-      nextReviewDate.setDate(now.getDate() + 1);
-      status = 'Practicing';
-    } else if (performance === 'good') {
-      nextReviewDate.setDate(now.getDate() + 3);
-    } else if (performance === 'easy') {
-      nextReviewDate.setDate(now.getDate() + 7);
-      status = 'Mastered';
-    }
-
+export const submitReview = createAsyncThunk(
+  'reviews/submit',
+  async ({ id, quality }, { getState }) => {
     const token = getState().auth.token;
-    const response = await axios.put(`${API_URL}/questions/${id}`, {
-      status,
-      lastReviewed: now.toISOString(),
-      nextReviewDate: nextReviewDate.toISOString()
-    }, {
+    const response = await axios.post(`${API_URL}/reviews/${id}/review`, { quality }, {
       headers: { Authorization: `Bearer ${token}` }
     });
     return response.data;
@@ -48,8 +28,11 @@ const reviewSlice = createSlice({
     dueItems: [],
     status: 'idle',
     error: null,
+    reviewedCount: 0,
   },
-  reducers: {},
+  reducers: {
+    resetReviewedCount: (state) => { state.reviewedCount = 0; },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchDueReviews.pending, (state) => { state.status = 'loading'; })
@@ -61,10 +44,12 @@ const reviewSlice = createSlice({
         state.status = 'failed';
         state.error = action.error.message;
       })
-      .addCase(updateReview.fulfilled, (state, action) => {
+      .addCase(submitReview.fulfilled, (state, action) => {
         state.dueItems = state.dueItems.filter(item => item._id !== action.payload._id);
+        state.reviewedCount += 1;
       });
   },
 });
 
+export const { resetReviewedCount } = reviewSlice.actions;
 export default reviewSlice.reducer;
