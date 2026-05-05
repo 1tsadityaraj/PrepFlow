@@ -23,12 +23,12 @@ class QuestionUpdate(BaseModel):
     status: Optional[Literal["To Learn", "Practicing", "Mastered", "Revision"]] = None
     lastReviewed: Optional[datetime] = None
     nextReviewDate: Optional[datetime] = None
-    interval: Optional[int] = None
-    repetitions: Optional[int] = None
-    easeFactor: Optional[float] = None
+    interval: Optional[int] = Field(None, ge=1)
+    repetitions: Optional[int] = Field(None, ge=0)
+    easeFactor: Optional[float] = Field(None, ge=1.3)
 
 class ReviewRequest(BaseModel):
-    quality: Literal["again", "good", "easy"]
+    quality: int = Field(..., ge=0, le=5, description="Quality of recall (0-5)")
 
 class QuestionInDB(QuestionBase):
     id: str = Field(alias="_id")

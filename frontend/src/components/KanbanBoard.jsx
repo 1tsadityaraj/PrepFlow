@@ -4,6 +4,7 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { updateQuestionStatus, fetchQuestions } from '../store/slices/boardSlice';
 import { GripVertical, Clock, CheckCircle, Brain, RefreshCw, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import axios from 'axios';
 
 const COLUMNS = [
@@ -129,8 +130,10 @@ export default function KanbanBoard() {
         headers: { Authorization: `Bearer ${token}` }
       });
       dispatch(fetchQuestions());
+      toast.success('Question added successfully!');
     } catch (err) {
       console.error('Failed to add card:', err);
+      toast.error('Failed to add question');
     }
   };
 

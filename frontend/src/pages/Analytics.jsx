@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchQuestions } from '../store/slices/questionSlice';
-import { BarChart3, Target, Flame, TrendingUp, BookOpen, AlertTriangle, Calendar } from 'lucide-react';
+import { BarChart3, Target, Flame, TrendingUp, BookOpen, AlertTriangle, Calendar, Zap } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, AreaChart, Area
@@ -86,10 +86,27 @@ export default function Analytics() {
 
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
         <p className="text-gray-500 mt-1">Track your interview preparation progress</p>
       </div>
+
+      {/* AI Insights Engine */}
+      {analyticsData?.insights && analyticsData.insights.length > 0 && (
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl border border-indigo-100 p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="h-5 w-5 text-indigo-600" />
+            <h3 className="font-bold text-indigo-900">AI Preparation Insights</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {analyticsData.insights.map((insight, idx) => (
+              <div key={idx} className="bg-white/60 rounded-lg p-4 text-sm text-indigo-800 font-medium">
+                {insight}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">

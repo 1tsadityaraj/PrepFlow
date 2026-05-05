@@ -1,14 +1,27 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import connect_to_mongo, close_mongo_connection
 from core.database import get_database
-from routes import auth, questions, analytics, reviews
+from routes import auth, questions, analytics, reviews, ai
 from core.config import settings
+from api.rate_limit import RateLimiter
 import datetime
 import random
+import time
+import logging
 from core.security import get_password_hash
 
-app = FastAPI(title=settings.PROJECT_NAME)
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Global Rate Limiter: 100 requests per 60 seconds
+global_limiter = RateLimiter(requests=100, window=60)
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    dependencies=[Depends(global_limiter)]
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,6 +30,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = (time.time() - start_time) * 1000
+    logger.info(f"{request.method} {request.url.path} - {response.status_code} - {process_time:.2f}ms")
+    return response
+
+async def setup_indexes():
+    """Create MongoDB indexes for performance optimization"""
+    db = get_database()
+    # Index for user's questions
+    await db.questions.create_index([("userId", 1), ("topic", 1)])
+    await db.questions.create_index([("userId", 1), ("nextReviewDate", 1)])
+    await db.review_history.create_index([("userId", 1), ("timestamp", -1)])
+    logger.info("MongoDB indexes created successfully.")
 
 async def seed_mock_data():
     db = get_database()
@@ -81,13 +111,12 @@ async def seed_mock_data():
     topics = ["Arrays", "Linked Lists", "Trees", "Dynamic Programming", "Graphs", "Design", "Strings"]
     for days_ago in range(30):
         date = now - datetime.timedelta(days=days_ago)
-        # Simulate 0-5 reviews per day (higher on weekdays)
         count = random.randint(0, 5) if days_ago % 7 not in (0, 6) else random.randint(0, 2)
         for _ in range(count):
             review_history.append({
                 "userId": user_id,
                 "questionId": "demo",
-                "quality": random.choice(["again", "good", "easy"]),
+                "quality": random.choice([2, 4, 5]),
                 "timestamp": date.replace(hour=random.randint(8, 22), minute=random.randint(0, 59)),
                 "topic": random.choice(topics),
                 "difficulty": random.choice(["Easy", "Medium", "Hard"]),
@@ -96,11 +125,12 @@ async def seed_mock_data():
     if review_history:
         await db.review_history.insert_many(review_history)
 
-    print(f"Seeded {len(questions_list)} questions and {len(review_history)} review events.")
+    logger.info(f"Seeded {len(questions_list)} questions and {len(review_history)} review events.")
 
 @app.on_event("startup")
 async def startup_db_client():
     await connect_to_mongo()
+    await setup_indexes()
     await seed_mock_data()
 
 @app.on_event("shutdown")
@@ -111,7 +141,8 @@ app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(questions.router, prefix="/questions", tags=["questions"])
 app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
+app.include_router(ai.router, prefix="/ai", tags=["ai"])
 
 @app.get("/")
 def root():
-    return {"message": "Welcome to PrepFlow API"}
+    return {"message": "Welcome to PrepFlow API - Production Ready"}

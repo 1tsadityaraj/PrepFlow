@@ -73,15 +73,48 @@ async def get_analytics(current_user: dict = Depends(get_current_user)):
         d = (now - timedelta(days=29 - i)).strftime("%Y-%m-%d")
         daily_reviews.append({"date": d, "count": daily_activity.get(d, 0)})
 
-    # ── Streak calculation ──
+    # ── Streak and Consistency calculation ──
     streak = 0
+    consistency_score = 0
     for i in range(30):
         d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
         if daily_activity.get(d, 0) > 0:
             streak += 1
+            consistency_score += 1
         else:
-            if i > 0:  # Allow today to be zero (not done yet)
+            if i > 0:  # Allow today to be zero
                 break
+
+    consistency_percent = round((consistency_score / 30) * 100)
+
+    # ── Difficulty Analysis ──
+    difficulty_performance = {"Easy": {"total": 0, "correct": 0}, "Medium": {"total": 0, "correct": 0}, "Hard": {"total": 0, "correct": 0}}
+    for h in history:
+        diff = h.get("difficulty")
+        if diff in difficulty_performance:
+            difficulty_performance[diff]["total"] += 1
+            if h.get("quality", 0) >= 4:
+                difficulty_performance[diff]["correct"] += 1
+                
+    hardest_difficulty = "None"
+    lowest_acc = 100
+    for d, stats in difficulty_performance.items():
+        if stats["total"] > 0:
+            acc = (stats["correct"] / stats["total"]) * 100
+            if acc < lowest_acc:
+                lowest_acc = acc
+                hardest_difficulty = d
+
+    # ── Insights Generation ──
+    insights = []
+    if weak_topics:
+        insights.append(f"You are weakest in {weak_topics[0]['topic']}. Focus your practice here.")
+    if hardest_difficulty != "None":
+        insights.append(f"Your accuracy drops on {hardest_difficulty} problems ({round(lowest_acc)}% success rate).")
+    if consistency_percent > 70:
+        insights.append(f"Great consistency! You studied {consistency_percent}% of the last 30 days.")
+    else:
+        insights.append("Try to review a few questions every day to build a strong habit.")
 
     return {
         "topicWise": topic_wise,
@@ -90,4 +123,5 @@ async def get_analytics(current_user: dict = Depends(get_current_user)):
         "streak": streak,
         "weakTopics": weak_topics,
         "dailyReviews": daily_reviews,
+        "insights": insights
     }

@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchQuestions } from '../store/slices/questionSlice';
-import { ArrowLeft, Filter, Plus } from 'lucide-react';
+import { ArrowLeft, Filter, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const getDifficultyColor = (diff) => {
@@ -24,13 +24,51 @@ const getStatusColor = (status) => {
   }
 };
 
+// Memoized Question Card for Performance
+const QuestionCard = memo(({ q, index }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ delay: index * 0.03 }}
+    className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all duration-200"
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-2">
+          <h3 className="font-semibold text-gray-900">{q.title}</h3>
+          <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-md border ${getDifficultyColor(q.difficulty)}`}>
+            {q.difficulty}
+          </span>
+        </div>
+        {q.description && (
+          <p className="text-sm text-gray-500 line-clamp-1">{q.description}</p>
+        )}
+      </div>
+      <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${getStatusColor(q.status)}`}>
+        {q.status}
+      </span>
+    </div>
+  </motion.div>
+));
+
 export default function TopicDetail() {
   const { id } = useParams();
   const topicName = decodeURIComponent(id);
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { items, status } = useSelector(state => state.questions);
+  
   const [filter, setFilter] = useState('All');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Debounce search input
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   useEffect(() => {
     if (status === 'idle') {
@@ -38,17 +76,28 @@ export default function TopicDetail() {
     }
   }, [dispatch, status]);
 
-  const topicQuestions = items.filter(q => q.topic === topicName);
-  const filtered = filter === 'All'
-    ? topicQuestions
-    : topicQuestions.filter(q => q.difficulty === filter);
-
-  const counts = {
-    All: topicQuestions.length,
-    Easy: topicQuestions.filter(q => q.difficulty === 'Easy').length,
-    Medium: topicQuestions.filter(q => q.difficulty === 'Medium').length,
-    Hard: topicQuestions.filter(q => q.difficulty === 'Hard').length,
-  };
+  // Memoize filtering logic
+  const { filtered, counts } = useMemo(() => {
+    const topicQuestions = items.filter(q => q.topic === topicName);
+    
+    let result = topicQuestions;
+    if (filter !== 'All') {
+      result = result.filter(q => q.difficulty === filter);
+    }
+    if (debouncedSearch) {
+      const lower = debouncedSearch.toLowerCase();
+      result = result.filter(q => q.title.toLowerCase().includes(lower) || (q.description && q.description.toLowerCase().includes(lower)));
+    }
+    
+    const countsObj = {
+      All: topicQuestions.length,
+      Easy: topicQuestions.filter(q => q.difficulty === 'Easy').length,
+      Medium: topicQuestions.filter(q => q.difficulty === 'Medium').length,
+      Hard: topicQuestions.filter(q => q.difficulty === 'Hard').length,
+    };
+    
+    return { filtered: result, counts: countsObj };
+  }, [items, topicName, filter, debouncedSearch]);
 
   return (
     <>
@@ -64,7 +113,19 @@ export default function TopicDetail() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{topicName}</h1>
-            <p className="text-gray-500 mt-1">{topicQuestions.length} questions in this topic</p>
+            <p className="text-gray-500 mt-1">{counts.All} questions in this topic</p>
+          </div>
+          
+          {/* Search Input */}
+          <div className="relative">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text"
+              placeholder="Search questions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-shadow w-64"
+            />
           </div>
         </div>
       </div>
@@ -87,40 +148,36 @@ export default function TopicDetail() {
         ))}
       </div>
 
-      {/* Question list */}
-      <div className="space-y-3">
-        {filtered.map((q, i) => (
-          <motion.div
-            key={q._id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.03 }}
-            className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-md transition-all duration-200"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-semibold text-gray-900">{q.title}</h3>
-                  <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-md border ${getDifficultyColor(q.difficulty)}`}>
-                    {q.difficulty}
-                  </span>
+      {/* Loading Skeletons */}
+      {status === 'loading' && (
+        <div className="space-y-3">
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="bg-white rounded-xl border border-gray-200 p-5 animate-pulse">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="h-5 bg-gray-200 rounded w-1/3 mb-3"></div>
+                  <div className="h-3 bg-gray-100 rounded w-2/3"></div>
                 </div>
-                {q.description && (
-                  <p className="text-sm text-gray-500 line-clamp-1">{q.description}</p>
-                )}
+                <div className="h-6 w-20 bg-gray-200 rounded-full"></div>
               </div>
-              <span className={`text-xs font-medium px-3 py-1.5 rounded-full ${getStatusColor(q.status)}`}>
-                {q.status}
-              </span>
             </div>
-          </motion.div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      {filtered.length === 0 && (
+      {/* Question list */}
+      {status === 'succeeded' && (
+        <div className="space-y-3">
+          {filtered.map((q, i) => (
+            <QuestionCard key={q._id} q={q} index={i} />
+          ))}
+        </div>
+      )}
+
+      {status === 'succeeded' && filtered.length === 0 && (
         <div className="text-center py-20 text-gray-400">
           <p className="text-lg font-medium">No questions found</p>
-          <p className="text-sm mt-1">Try changing the difficulty filter.</p>
+          <p className="text-sm mt-1">Try changing the difficulty filter or search term.</p>
         </div>
       )}
     </>

@@ -23,13 +23,9 @@ export default function MockInterview() {
   const dispatch = useDispatch();
   const { items, status } = useSelector(state => state.questions);
 
-  const [phase, setPhase] = useState('setup'); // setup | active | result
-  const [config, setConfig] = useState({ count: 5, time: 300, difficulty: 'All' });
-  const [questions, setQuestions] = useState([]);
-  const [current, setCurrent] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [results, setResults] = useState([]);
-  const timerRef = useRef(null);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [isEvaluating, setIsEvaluating] = useState(false);
+  const token = useSelector(state => state.auth.token);
 
   useEffect(() => {
     if (status === 'idle') dispatch(fetchQuestions());
@@ -49,11 +45,12 @@ export default function MockInterview() {
     setResults([]);
     setTimeLeft(config.time);
     setPhase('active');
+    setUserAnswer('');
   };
 
   // Timer
   useEffect(() => {
-    if (phase !== 'active') return;
+    if (phase !== 'active' || isEvaluating) return;
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -64,10 +61,10 @@ export default function MockInterview() {
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [phase, current]);
+  }, [phase, current, isEvaluating]);
 
-  const markQuestion = useCallback((result) => {
-    const newResults = [...results, { question: questions[current], result }];
+  const markQuestion = useCallback(async (result, answer = '', evaluation = null) => {
+    const newResults = [...results, { question: questions[current], result, answer, evaluation }];
     setResults(newResults);
 
     if (current + 1 >= questions.length) {
@@ -77,8 +74,36 @@ export default function MockInterview() {
     } else {
       setCurrent(prev => prev + 1);
       setTimeLeft(config.time);
+      setUserAnswer('');
     }
   }, [current, questions, results, config.time]);
+
+  const handleEvaluate = async () => {
+    if (!userAnswer.trim()) {
+      alert("Please enter an answer to evaluate.");
+      return;
+    }
+    
+    setIsEvaluating(true);
+    try {
+      const response = await axios.post('http://localhost:8000/ai/evaluate', {
+        question_title: questions[current].title,
+        question_topic: questions[current].topic,
+        user_answer: userAnswer
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      const evaluation = response.data;
+      const result = evaluation.score >= 70 ? 'solved' : 'failed';
+      markQuestion(result, userAnswer, evaluation);
+    } catch (error) {
+      console.error("Evaluation failed", error);
+      alert("Failed to evaluate answer. Please try again or mark manually.");
+    } finally {
+      setIsEvaluating(false);
+    }
+  };
 
   const getTimerColor = () => {
     const pct = timeLeft / config.time;
@@ -93,7 +118,7 @@ export default function MockInterview() {
     <>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Mock Interview</h1>
-        <p className="text-gray-500 mt-1">Timed practice — simulate a real coding interview</p>
+        <p className="text-gray-500 mt-1">Timed practice — simulate a real coding interview with AI Evaluation</p>
       </div>
 
       <AnimatePresence mode="wait">
@@ -111,7 +136,7 @@ export default function MockInterview() {
                 <Zap className="h-7 w-7 text-indigo-600" />
               </div>
               <h2 className="text-xl font-bold text-gray-900 text-center mb-1">Configure Your Session</h2>
-              <p className="text-sm text-gray-500 text-center mb-8">Random questions, timed, no peeking.</p>
+              <p className="text-sm text-gray-500 text-center mb-8">Random questions, timed, with AI evaluation.</p>
 
               <div className="space-y-6">
                 <div>
@@ -191,9 +216,10 @@ export default function MockInterview() {
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
+            className="flex flex-col h-[calc(100vh-200px)]"
           >
             {/* Progress bar */}
-            <div className="mb-6">
+            <div className="mb-6 shrink-0">
               <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
                 <span>Question {current + 1} of {questions.length}</span>
                 <span className={`font-mono text-2xl font-bold ${getTimerColor()}`}>
@@ -210,41 +236,71 @@ export default function MockInterview() {
               </div>
             </div>
 
-            {/* Question card */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm mb-6">
-              <div className="flex items-center gap-3 mb-4">
-                <span className={`text-xs font-semibold px-3 py-1 rounded-md border ${getDifficultyColor(questions[current].difficulty)}`}>
-                  {questions[current].difficulty}
-                </span>
-                <span className="text-sm text-gray-500">{questions[current].topic}</span>
+            <div className="flex gap-6 flex-1 min-h-0">
+              {/* Question Side */}
+              <div className="w-1/2 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm overflow-y-auto">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className={`text-xs font-semibold px-3 py-1 rounded-md border ${getDifficultyColor(questions[current].difficulty)}`}>
+                    {questions[current].difficulty}
+                  </span>
+                  <span className="text-sm text-gray-500">{questions[current].topic}</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-3">{questions[current].title}</h2>
+                <p className="text-gray-600 text-sm whitespace-pre-wrap">{questions[current].description}</p>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-3">{questions[current].title}</h2>
-              <p className="text-gray-600">{questions[current].description}</p>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => markQuestion('solved')}
-                className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-all hover:scale-105 active:scale-95"
-              >
-                <CheckCircle className="h-5 w-5" />
-                Solved It
-              </button>
-              <button
-                onClick={() => markQuestion('failed')}
-                className="flex items-center gap-2 px-8 py-3 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-all hover:scale-105 active:scale-95"
-              >
-                <XCircle className="h-5 w-5" />
-                Couldn't Solve
-              </button>
-              <button
-                onClick={() => markQuestion('skipped')}
-                className="flex items-center gap-2 px-8 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all border border-gray-200"
-              >
-                <SkipForward className="h-5 w-5" />
-                Skip
-              </button>
+              
+              {/* Answer Side */}
+              <div className="w-1/2 flex flex-col gap-4">
+                <textarea
+                  className="flex-1 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none font-mono text-sm"
+                  placeholder="Type your approach, pseudo-code, or code here..."
+                  value={userAnswer}
+                  onChange={e => setUserAnswer(e.target.value)}
+                  disabled={isEvaluating}
+                />
+                
+                {/* Action buttons */}
+                <div className="flex gap-3 shrink-0">
+                  <button
+                    onClick={handleEvaluate}
+                    disabled={isEvaluating || !userAnswer.trim()}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+                  >
+                    {isEvaluating ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Zap className="h-5 w-5" />
+                        AI Evaluate
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => markQuestion('solved')}
+                    disabled={isEvaluating}
+                    className="flex items-center gap-2 px-6 py-3 bg-emerald-100 text-emerald-700 rounded-xl font-medium hover:bg-emerald-200 transition-all border border-emerald-200 disabled:opacity-50"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                    Manual Pass
+                  </button>
+                  <button
+                    onClick={() => markQuestion('failed')}
+                    disabled={isEvaluating}
+                    className="flex items-center gap-2 px-6 py-3 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200 transition-all border border-red-200 disabled:opacity-50"
+                  >
+                    <XCircle className="h-5 w-5" />
+                    Fail
+                  </button>
+                  <button
+                    onClick={() => markQuestion('skipped')}
+                    disabled={isEvaluating}
+                    className="flex items-center justify-center w-12 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-all border border-gray-200 disabled:opacity-50"
+                    title="Skip Question"
+                  >
+                    <SkipForward className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
@@ -255,7 +311,7 @@ export default function MockInterview() {
             key="result"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="max-w-2xl mx-auto"
+            className="max-w-4xl mx-auto"
           >
             <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm text-center mb-8">
               <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -272,25 +328,48 @@ export default function MockInterview() {
             </div>
 
             {/* Results list */}
-            <div className="space-y-3 mb-8">
+            <div className="space-y-4 mb-8">
               {results.map((r, i) => (
-                <div key={i} className={`flex items-center justify-between bg-white rounded-xl border p-4 ${
+                <div key={i} className={`bg-white rounded-xl border p-5 ${
                   r.result === 'solved' ? 'border-emerald-200' : r.result === 'failed' ? 'border-red-200' : 'border-gray-200'
                 }`}>
-                  <div className="flex items-center gap-3">
-                    {r.result === 'solved' ? (
-                      <CheckCircle className="h-5 w-5 text-emerald-500" />
-                    ) : r.result === 'failed' ? (
-                      <XCircle className="h-5 w-5 text-red-500" />
-                    ) : (
-                      <SkipForward className="h-5 w-5 text-gray-400" />
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {r.result === 'solved' ? (
+                        <CheckCircle className="h-5 w-5 text-emerald-500" />
+                      ) : r.result === 'failed' ? (
+                        <XCircle className="h-5 w-5 text-red-500" />
+                      ) : (
+                        <SkipForward className="h-5 w-5 text-gray-400" />
+                      )}
+                      <span className="font-medium text-gray-900">{r.question.title}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-md border ${getDifficultyColor(r.question.difficulty)}`}>
+                        {r.question.difficulty}
+                      </span>
+                    </div>
+                    {r.evaluation && (
+                      <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">
+                        AI Score: {r.evaluation.score}/100
+                      </span>
                     )}
-                    <span className="font-medium text-gray-900">{r.question.title}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-md border ${getDifficultyColor(r.question.difficulty)}`}>
-                      {r.question.difficulty}
-                    </span>
                   </div>
-                  <span className="text-sm text-gray-500 capitalize">{r.result}</span>
+                  
+                  {r.evaluation && (
+                    <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="bg-emerald-50 rounded-lg p-3">
+                        <h4 className="font-semibold text-emerald-800 mb-2">Strengths</h4>
+                        <ul className="list-disc pl-4 text-emerald-700 space-y-1">
+                          {r.evaluation.strengths.map((s, idx) => <li key={idx}>{s}</li>)}
+                        </ul>
+                      </div>
+                      <div className="bg-amber-50 rounded-lg p-3">
+                        <h4 className="font-semibold text-amber-800 mb-2">To Improve</h4>
+                        <ul className="list-disc pl-4 text-amber-700 space-y-1">
+                          {r.evaluation.improvement_suggestions.map((s, idx) => <li key={idx}>{s}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
