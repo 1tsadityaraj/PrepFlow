@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.database import connect_to_mongo, close_mongo_connection
 from core.database import get_database
-from routes import auth, questions, analytics
+from routes import auth, questions, analytics, reviews
 from core.config import settings
 import datetime
 from core.security import get_password_hash
@@ -65,6 +65,7 @@ async def shutdown_db_client():
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(questions.router, prefix="/questions", tags=["questions"])
 app.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+app.include_router(reviews.router, prefix="/reviews", tags=["reviews"])
 
 @app.get("/")
 def root():
