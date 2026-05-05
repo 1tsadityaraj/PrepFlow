@@ -16,7 +16,7 @@ PrepFlow is an Interview Preparation Board with a Kanban-style workflow and adva
 ### Prerequisites
 - Python 3.9+
 - Node.js 18+
-- MongoDB installed and running locally on default port (27017)
+- *Note: Currently configured to use an **in-memory mock database** for demo purposes. No MongoDB installation required!*
 
 ### 1️⃣ Backend Setup
 1. Open a terminal and navigate to the backend folder:
